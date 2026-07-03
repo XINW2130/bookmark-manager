@@ -47,8 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function bindEvents() {
-  // 拖拽区域点击
-  els.dropZone.addEventListener('click', () => els.fileInput.click());
+  // 拖拽区域点击（排除 label 和 input 自身，避免 label for 属性触发的二次弹窗）
+  els.dropZone.addEventListener('click', (e) => {
+    if (e.target.closest('label[for="fileInput"]') || e.target === els.fileInput) return;
+    els.fileInput.click();
+  });
   
   // 文件选择
   els.fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
