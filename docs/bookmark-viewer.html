@@ -358,7 +358,7 @@ async function loadEncryptedFile() {
   $('#errorState').style.display = 'none';
 
   try {
-    const resp = await fetch(ENCRYPTED_FILE);
+    const resp = await fetch(ENCRYPTED_FILE + '?t=' + Date.now());
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`);
     }
@@ -419,6 +419,10 @@ async function handleDecrypt() {
 
     hidePasswordModal();
     $('#appContainer').style.display = '';
+
+    // 调试：输出解密后的数据结构
+    console.log('[Viewer] 解密成功，Chrome:', (decryptedData.chrome || []).length, '条, 导入:', (decryptedData.imported || []).length, '条');
+    console.log('[Viewer] 数据键:', Object.keys(decryptedData));
 
     // Update header
     const total = (decryptedData.chrome || []).length + (decryptedData.imported || []).length;
