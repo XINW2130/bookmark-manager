@@ -76,11 +76,22 @@ body {
    ============================================================ */
 .app-header {
   background: linear-gradient(135deg, #4f6ef7, #6c8cff);
-  color: #fff; padding: 1.5rem 2rem; box-shadow: 0 2px 12px rgba(79,110,247,0.2);
+  color: #fff; padding: 1.25rem 2rem; box-shadow: 0 2px 12px rgba(79,110,247,0.2);
 }
-.header-inner { max-width: 1200px; margin: 0 auto; }
+.header-inner {
+  max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem;
+}
+.header-left { min-width: 0; }
 .header-title { font-size: 1.6rem; font-weight: 800; }
 .header-meta { font-size: 0.85rem; opacity: 0.85; margin-top: 0.25rem; }
+.btn-lock-header {
+  padding: 8px 14px; border: 2px solid rgba(255,255,255,0.5); border-radius: 10px;
+  font-size: 0.9rem; cursor: pointer; background: rgba(255,255,255,0.15);
+  color: #fff; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+}
+.btn-lock-header:hover { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.8); }
 
 /* ============================================================
    Toolbar
@@ -98,7 +109,7 @@ body {
 }
 .search-box input {
   width: 100%; padding: 10px 14px 10px 38px;
-  border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.95rem;
+  border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;
   outline: none; transition: border-color 0.2s; background: #f9fafb;
 }
 .search-box input:focus { border-color: #4f6ef7; background: #fff; }
@@ -116,12 +127,6 @@ body {
 }
 .btn-filter:hover { border-color: #4f6ef7; color: #4f6ef7; }
 .btn-filter.active { background: #4f6ef7; color: #fff; border-color: #4f6ef7; }
-.btn-lock {
-  padding: 8px 14px; border: 2px solid #e0e0e0; border-radius: 10px;
-  font-size: 0.85rem; cursor: pointer; background: #fff; color: #555;
-  transition: all 0.2s; white-space: nowrap; margin-left: auto;
-}
-.btn-lock:hover { border-color: #e74c3c; color: #e74c3c; }
 .count-badge {
   font-size: 0.85rem; color: #999; padding: 4px 12px;
   background: #f0f2f5; border-radius: 20px; white-space: nowrap;
@@ -198,25 +203,26 @@ body {
 @media (max-width: 768px) {
   .app-header { padding: 1rem; }
   .header-title { font-size: 1.2rem; }
+  .btn-lock-header { font-size: 0.8rem; padding: 6px 12px; }
   .toolbar { padding: 0.6rem 0.75rem; }
   .toolbar-inner { flex-direction: column; align-items: stretch; gap: 0.5rem; }
   .search-box { min-width: 0; }
   .filter-group { justify-content: flex-start; }
-  .btn-lock { margin-left: 0; align-self: flex-start; }
   .content { padding: 0.75rem; }
   .card-grid { grid-template-columns: 1fr; gap: 0.75rem; }
   .modal-box { max-width: calc(100vw - 2rem); padding: 1.5rem; }
 }
 
 @media (max-width: 480px) {
-  .app-header { padding: 0.85rem 0.75rem; }
-  .header-title { font-size: 1.05rem; }
-  .header-meta { font-size: 0.75rem; }
+  .app-header { padding: 0.75rem; }
+  .header-inner { gap: 0.5rem; }
+  .header-title { font-size: 1rem; }
+  .header-meta { font-size: 0.7rem; }
+  .btn-lock-header { font-size: 0.75rem; padding: 5px 10px; border-radius: 8px; }
   .toolbar { padding: 0.5rem; }
   .toolbar-inner { gap: 0.4rem; }
   .filter-group { gap: 0.35rem; }
   .btn-filter { padding: 6px 12px; font-size: 0.78rem; }
-  .btn-lock { padding: 6px 12px; font-size: 0.78rem; }
   .count-badge { font-size: 0.75rem; padding: 3px 10px; }
   .content { padding: 0.5rem; }
   .card { padding: 0.85rem; gap: 0.65rem; }
@@ -226,7 +232,7 @@ body {
   .card-time { font-size: 0.68rem; }
   .card-grid { gap: 0.6rem; margin-bottom: 1.5rem; }
   .section-title { font-size: 0.95rem; }
-  .search-box input { font-size: 0.85rem; padding: 8px 12px 8px 34px; }
+  .search-box input { font-size: 16px; padding: 8px 12px 8px 34px; }
   .search-icon { font-size: 0.85rem; left: 10px; }
 }
 
@@ -287,12 +293,15 @@ body {
   <!-- Header -->
   <header class="app-header">
     <div class="header-inner">
-      <div class="header-title">🔖 加密书签查看器</div>
-      <div class="header-meta">
-        <span id="exportTime">-</span>
-        &nbsp;·&nbsp;
-        <span id="totalCount">0</span> 条书签
+      <div class="header-left">
+        <div class="header-title">🔖 加密书签查看器</div>
+        <div class="header-meta">
+          <span id="exportTime">-</span>
+          &nbsp;·&nbsp;
+          <span id="totalCount">0</span> 条书签
+        </div>
       </div>
+      <button class="btn-lock-header" id="btnReLock" title="锁定并重新输入密码">🔒 锁定</button>
     </div>
   </header>
 
@@ -309,7 +318,6 @@ body {
         <button class="btn-filter" data-filter="imported">外部导入</button>
         <span class="count-badge" id="filteredCount">0 条</span>
       </div>
-      <button class="btn-lock" id="btnReLock" title="锁定并重新输入密码">🔒 锁定</button>
     </div>
   </div>
 
