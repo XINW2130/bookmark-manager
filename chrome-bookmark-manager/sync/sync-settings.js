@@ -17,12 +17,6 @@ const els = {
   btnSave: $('#btnSave'),
   btnPull: $('#btnPull'),
   btnPush: $('#btnPush'),
-  syncPasswordDialog: $('#syncPasswordDialog'),
-  syncPasswordInput: $('#syncPasswordInput'),
-  dialogTitle: $('#dialogTitle'),
-  dialogDesc: $('#dialogDesc'),
-  btnCancelSync: $('#btnCancelSync'),
-  btnConfirmSync: $('#btnConfirmSync'),
   syncHint: $('#syncHint'),
   statusRepo: $('#statusRepo'),
   statusConnection: $('#statusConnection'),
@@ -41,7 +35,6 @@ let syncState = {
   hasConfig: false,
   hasPassword: false
 };
-let pendingSyncAction = null; // 'pull' | 'push'
 
 // ========== 初始化 ==========
 document.addEventListener('DOMContentLoaded', async () => {
@@ -123,7 +116,7 @@ async function loadStatus() {
   els.btnPull.disabled = !ready;
   els.btnPush.disabled = !ready;
   els.syncHint.textContent = ready
-    ? '点击按钮后需要输入密码确认操作'
+    ? '点击按钮直接同步，使用已保存的加密密码'
     : '请先保存配置和密码后，再点击同步按钮';
 }
 
@@ -262,60 +255,32 @@ function bindEvents() {
     }
   });
 
-  // 拉取 - 弹出密码确认窗
-  els.btnPull.addEventListener('click', () => {
+  // 拉取 - 直接使用已保存密码
+  els.btnPull.addEventListener('click', async () => {
     if (els.btnPull.disabled) {
       showToast('请先保存配置和密码', 'error');
       return;
     }
-    pendingSyncAction = 'pull';
-    els.dialogTitle.textContent = '⬇ 拉取书签';
-    els.dialogDesc.textContent = '将从远端仓库下载并解密书签数据';
-    els.syncPasswordInput.value = '';
-    els.syncPasswordDialog.style.display = 'flex';
-    els.syncPasswordInput.focus();
+    const pwd = await GitSync.getPassword();
+    if (!pwd) {
+      showToast('请先在加密设置中保存密码', 'error');
+      return;
+    }
+    await doPull(pwd);
   });
 
-  // 推送 - 弹出密码确认窗
-  els.btnPush.addEventListener('click', () => {
+  // 推送 - 直接使用已保存密码
+  els.btnPush.addEventListener('click', async () => {
     if (els.btnPush.disabled) {
       showToast('请先保存配置和密码', 'error');
       return;
     }
-    pendingSyncAction = 'push';
-    els.dialogTitle.textContent = '⬆ 推送书签';
-    els.dialogDesc.textContent = '将加密当前所有书签并上传到远端仓库';
-    els.syncPasswordInput.value = '';
-    els.syncPasswordDialog.style.display = 'flex';
-    els.syncPasswordInput.focus();
-  });
-
-  // 取消弹窗
-  els.btnCancelSync.addEventListener('click', closeSyncDialog);
-
-  // 点击遮罩层取消
-  els.syncPasswordDialog.querySelector('.dialog-mask').addEventListener('click', closeSyncDialog);
-
-  // 确认按钮
-  els.btnConfirmSync.addEventListener('click', async () => {
-    const pwd = els.syncPasswordInput.value.trim();
+    const pwd = await GitSync.getPassword();
     if (!pwd) {
-      showToast('请输入密码', 'error');
-      els.syncPasswordInput.focus();
+      showToast('请先在加密设置中保存密码', 'error');
       return;
     }
-    // 先保存 action，closeSyncDialog 会清空 pendingSyncAction
-    const action = pendingSyncAction;
-    closeSyncDialog();
-    if (action === 'pull') await doPull(pwd);
-    else if (action === 'push') await doPush(pwd);
-  });
-
-  // 密码输入框按 Enter 确认
-  els.syncPasswordInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      els.btnConfirmSync.click();
-    }
+    await doPush(pwd);
   });
 
   // 自动同步复选框联动
@@ -401,12 +366,6 @@ async function doPull(password) {
 }
 
 // ========== 工具函数 ==========
-function closeSyncDialog() {
-  els.syncPasswordDialog.style.display = 'none';
-  els.syncPasswordInput.value = '';
-  pendingSyncAction = null;
-}
-
 function updateTokenHelp() {
   const tips = {
     github: '需要仓库读写权限。在 GitHub: Settings → Developer settings → Tokens (classic) 中创建，勾选 repo 权限',

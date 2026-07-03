@@ -136,16 +136,27 @@ async function parseFile(file) {
       return;
     }
     
-    // 检查重复（基于 URL）
-    const existingUrls = new Set();
+    // 检查重复（基于 URL）：既比对本次解析的文件，也比对已存储的书签
+    const duplicateUrls = new Set();
+
+    // 1. 已存储的导入书签
+    try {
+      const stored = await chrome.storage.local.get(['importedBookmarks']);
+      const imported = stored.importedBookmarks || [];
+      for (const bm of imported) {
+        if (bm.url) duplicateUrls.add(bm.url);
+      }
+    } catch (e) { /* ignore */ }
+
+    // 2. 本次已解析的文件中的书签
     for (const pf of state.parsedFiles) {
       for (const bm of pf.bookmarks) {
-        existingUrls.add(bm.url);
+        duplicateUrls.add(bm.url);
       }
     }
     
     for (const bm of bookmarks) {
-      bm.duplicate = existingUrls.has(bm.url);
+      bm.duplicate = duplicateUrls.has(bm.url);
     }
     
     state.parsedFiles.push({
