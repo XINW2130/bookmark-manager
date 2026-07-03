@@ -131,6 +131,12 @@ body {
   font-size: 0.85rem; color: #999; padding: 4px 12px;
   background: #f0f2f5; border-radius: 20px; white-space: nowrap;
 }
+.btn-export {
+  padding: 8px 14px; border: 2px solid #4f6ef7; border-radius: 10px;
+  font-size: 0.85rem; cursor: pointer; background: #4f6ef7; color: #fff;
+  transition: all 0.2s; white-space: nowrap; margin-left: auto;
+}
+.btn-export:hover { background: #3d5ce5; border-color: #3d5ce5; }
 
 /* ============================================================
    Content Area
@@ -234,6 +240,7 @@ body {
   .section-title { font-size: 0.95rem; }
   .search-box input { font-size: 16px; padding: 8px 12px 8px 34px; }
   .search-icon { font-size: 0.85rem; left: 10px; }
+  .btn-export { padding: 6px 12px; font-size: 0.78rem; margin-left: 0; }
 }
 
 /* ============================================================
@@ -317,6 +324,7 @@ body {
         <button class="btn-filter" data-filter="chrome">Chrome</button>
         <button class="btn-filter" data-filter="imported">外部导入</button>
         <span class="count-badge" id="filteredCount">0 条</span>
+        <button class="btn-export" id="btnExport" title="导出当前列表为浏览器可导入的 HTML 文件">📤 导出</button>
       </div>
     </div>
   </div>
@@ -500,10 +508,14 @@ function renderBookmarks() {
 
   let html = '';
 
-  if (currentFilter === 'all' || currentFilter === 'chrome') {
+  const showChrome = (currentFilter === 'all' || currentFilter === 'chrome');
+  const showImported = (currentFilter === 'all' || currentFilter === 'imported');
+
+  // 全部模式下跳过空数据源，单独模式下始终显示该源
+  if (showChrome && (currentFilter !== 'all' || chromeBookmarks.length > 0)) {
     html += buildSection('🌐 Chrome 书签', chromeBookmarks);
   }
-  if (currentFilter === 'all' || currentFilter === 'imported') {
+  if (showImported && (currentFilter !== 'all' || importedBookmarks.length > 0)) {
     html += buildSection('📥 外部导入书签', importedBookmarks);
   }
 
@@ -513,9 +525,11 @@ function renderBookmarks() {
   }
 
   $('#bookmarkContent').innerHTML = html;
-  $('#filteredCount').textContent =
-    (currentFilter === 'all' ? (chromeBookmarks.length + importedBookmarks.length) :
-     currentFilter === 'chrome' ? chromeBookmarks.length : importedBookmarks.length) + ' 条';
+
+  let visibleCount = 0;
+  if (showChrome) visibleCount += chromeBookmarks.length;
+  if (showImported) visibleCount += importedBookmarks.length;
+  $('#filteredCount').textContent = visibleCount + ' 条';
 }
 
 function buildSection(title, bookmarks) {
@@ -601,6 +615,66 @@ document.querySelectorAll('.btn-filter').forEach(btn => {
     renderBookmarks();
   });
 });
+
+// Export
+$('#btnExport').addEventListener('click', exportBookmarks);
+
+function exportBookmarks() {
+  if (!decryptedData) return;
+
+  const query = searchQuery.toLowerCase().trim();
+  let chromeBookmarks = decryptedData.chrome || [];
+  let importedBookmarks = decryptedData.imported || [];
+
+  const showChrome = (currentFilter === 'all' || currentFilter === 'chrome');
+  const showImported = (currentFilter === 'all' || currentFilter === 'imported');
+
+  if (query) {
+    chromeBookmarks = chromeBookmarks.filter(b =>
+      (b.title && b.title.toLowerCase().includes(query)) ||
+      (b.url && b.url.toLowerCase().includes(query))
+    );
+    importedBookmarks = importedBookmarks.filter(b =>
+      (b.title && b.title.toLowerCase().includes(query)) ||
+      (b.url && b.url.toLowerCase().includes(query))
+    );
+  }
+
+  const items = [];
+  if (showChrome) items.push(...chromeBookmarks);
+  if (showImported) items.push(...importedBookmarks);
+
+  if (items.length === 0) {
+    alert('当前列表没有可导出的书签');
+    return;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+`;
+
+  for (const bm of items) {
+    const title = escHtml(bm.title || '未命名书签');
+    const url = escAttr(bm.url || '#');
+    const ts = bm.dateAdded ? Math.floor(new Date(bm.dateAdded).getTime() / 1000) : now;
+    html += `    <DT><A HREF="${url}" ADD_DATE="${ts}">${title}</A>\n`;
+  }
+
+  html += `</DL><p>\n`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `bookmarks_export_${new Date().toISOString().slice(0, 10)}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
 
 /* ============================================================
    Boot
