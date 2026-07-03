@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Git 同步设置 - 全浏览器书签管理器</title>
+  <link rel="stylesheet" href="sync-settings.css">
+</head>
+<body>
+  <div class="page-container">
+    <!-- 头部 -->
+    <header class="page-header">
+      <h1>🔄 Git 同步设置</h1>
+      <p>配置 Git 仓库，将书签加密后同步到远端，实现多设备间的安全共享。</p>
+    </header>
+
+    <div class="settings-layout">
+      <!-- 左侧：配置表单 -->
+      <div class="settings-card">
+        <h2>📋 仓库配置</h2>
+
+        <!-- Git 平台选择 -->
+        <div class="form-group">
+          <label for="platform">
+            Git 平台
+            <span class="label-hint" style="color:#f59e0b;">（需要 Git Pages 支持，默认 /docs 目录）</span>
+          </label>
+          <select id="platform">
+            <option value="github">GitHub</option>
+            <option value="gitee" disabled>Gitee·码云（Pages 已下线）</option>
+          </select>
+          <p class="help-text">目前仅 GitHub 提供免费 Pages 服务用于网页查看书签</p>
+        </div>
+
+        <!-- Access Token -->
+        <div class="form-group">
+          <label for="token">
+            Access Token
+            <span class="label-hint">（必填）</span>
+          </label>
+          <div class="input-row">
+            <input type="password" id="token" placeholder="输入你的 Access Token" autocomplete="off">
+            <button type="button" class="toggle-pwd" data-target="token">👁</button>
+          </div>
+          <p class="help-text" id="tokenHelp">
+            需要仓库读写权限。在 GitHub: Settings → Developer settings → Tokens；GitLab: Settings → Access Tokens；Gitee: 设置 → 私人令牌
+          </p>
+        </div>
+
+        <!-- 仓库地址 -->
+        <div class="form-group">
+          <label for="repoUrl">
+            仓库地址
+            <span class="label-hint">（必填）</span>
+          </label>
+          <input type="text" id="repoUrl" placeholder="用户名/仓库名，如: octocat/Hello-World" autocomplete="off">
+          <p class="help-text">格式: <code>用户名/仓库名称</code>，或粘贴完整 URL</p>
+        </div>
+
+        <!-- 文件路径 -->
+        <div class="form-group">
+          <label for="filePath">仓库文件路径</label>
+          <input type="text" id="filePath" value="bookmarks.enc" placeholder="bookmarks.enc">
+          <p class="help-text">加密后的书签保存在仓库中的哪个路径</p>
+        </div>
+
+        <!-- GitHub Pages 访问地址 -->
+        <div class="form-group" id="pagesUrlGroup" style="display:none;">
+          <label>🌐 GitHub Pages 访问地址</label>
+          <div class="pages-info">
+            <p class="help-text" style="margin:0 0 4px;">仓库 Settings → Pages → Source 选 Deploy from a branch，Branch 选 main，文件夹选 /docs</p>
+            <div class="input-row">
+              <input type="text" id="pagesUrl" readonly placeholder="输入仓库地址后自动生成">
+              <button type="button" id="btnCopyPagesUrl" class="btn-copy" title="复制地址">📋</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分隔线 -->
+        <hr class="divider">
+
+        <h2>🔐 加密设置</h2>
+
+        <!-- 加密密码 -->
+        <div class="form-group">
+          <label for="password">
+            加密密码
+            <span class="label-hint">（必填）</span>
+          </label>
+          <div class="input-row">
+            <input type="password" id="password" placeholder="设置一个强密码" autocomplete="off">
+            <button type="button" class="toggle-pwd" data-target="password">👁</button>
+          </div>
+          <p class="help-text">
+            ⚠️ 请牢记此密码，丢失后无法恢复！所有设备需使用相同密码
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label for="passwordConfirm">确认密码</label>
+          <input type="password" id="passwordConfirm" placeholder="再次输入密码" autocomplete="off">
+        </div>
+
+        <div class="encryption-info">
+          <div class="info-icon">🔒</div>
+          <div class="info-text">
+            <strong>AES-256-GCM 加密</strong>
+            <p>使用 PBKDF2 (100,000 次迭代) 从密码派生密钥，每次加密使用随机 IV。即使仓库被公开，书签内容也无法被解密。</p>
+          </div>
+        </div>
+
+        <!-- 分隔线 -->
+        <hr class="divider">
+
+        <h2>⚙️ 同步选项</h2>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="autoSync" checked>
+            <span>打开 Popup 时自动拉取最新书签</span>
+          </label>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="autoPush">
+            <span>导入/删除书签后自动推送到 Git</span>
+          </label>
+        </div>
+
+        <!-- 按钮区 -->
+        <div class="button-group">
+          <button type="button" id="btnTest" class="btn-outline">🔍 测试连接</button>
+          <button type="button" id="btnSave" class="btn-primary">💾 保存设置</button>
+        </div>
+      </div>
+
+      <!-- 右侧：状态与操作 -->
+      <div class="status-card">
+        <h2>📊 同步状态</h2>
+
+        <div class="status-section" id="statusSection">
+          <div class="status-item">
+            <span class="status-label">仓库</span>
+            <span class="status-value" id="statusRepo">未配置</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">连接状态</span>
+            <span class="status-value" id="statusConnection">-</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">上次同步</span>
+            <span class="status-value" id="statusLastSync">-</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">当前 Chrome 书签</span>
+            <span class="status-value" id="statusChromeCount">-</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">外部导入书签</span>
+            <span class="status-value" id="statusImportedCount">-</span>
+          </div>
+        </div>
+
+        <!-- 手动同步 -->
+        <div class="sync-actions">
+          <h3>📡 手动同步</h3>
+          <div class="sync-buttons">
+            <button type="button" id="btnPull" class="btn-sync pull" disabled>
+              ⬇ 拉取（下载解密）
+            </button>
+            <button type="button" id="btnPush" class="btn-sync push" disabled>
+              ⬆ 推送（加密上传）
+            </button>
+          </div>
+          <p class="help-text" style="margin-top:8px;" id="syncHint">请先保存配置和密码后，再点击同步按钮</p>
+        </div>
+
+        <!-- 密码确认弹窗（内嵌） -->
+        <div class="sync-password-dialog" id="syncPasswordDialog" style="display:none;">
+          <div class="dialog-mask"></div>
+          <div class="dialog-box">
+            <h4 id="dialogTitle">🔐 确认操作</h4>
+            <p id="dialogDesc">请输入加密密码以继续</p>
+            <input type="password" id="syncPasswordInput" placeholder="输入加密密码" autocomplete="off">
+            <div class="dialog-buttons">
+              <button type="button" id="btnCancelSync" class="btn-outline">取消</button>
+              <button type="button" id="btnConfirmSync" class="btn-primary">确认</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 同步日志 -->
+        <div class="sync-log" id="syncLog" style="display:none;">
+          <h3>📝 操作日志</h3>
+          <div class="log-content" id="logContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../sync/git-sync.js"></script>
+  <script src="sync-settings.js"></script>
+</body>
+</html>

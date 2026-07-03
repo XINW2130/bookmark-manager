@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>图标生成器 - 书签管理器</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+      background: #f8f9fa;
+    }
+    h1 { color: #1a1a2e; margin-bottom: 8px; }
+    p { color: #5f6368; margin-bottom: 24px; }
+    .icons-container {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .icon-card {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .icon-card canvas {
+      display: block;
+      margin: 0 auto;
+    }
+    .icon-card .label {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #5f6368;
+    }
+    .icon-card button {
+      margin-top: 8px;
+      padding: 6px 16px;
+      background: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .icon-card button:hover { background: #3367d6; }
+    .download-all {
+      padding: 12px 28px;
+      background: #34a853;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .download-all:hover { background: #2d9249; }
+    .note {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background: #e8f0fe;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #1967d2;
+    }
+  </style>
+</head>
+<body>
+  <h1>📑 图标生成器</h1>
+  <p>书签管理器 Chrome 插件图标</p>
+  
+  <div class="icons-container" id="iconsContainer"></div>
+  
+  <button class="download-all" onclick="downloadAll()">📥 一键下载全部图标</button>
+  
+  <div class="note">
+    ⚠️ 下载后请将三个 PNG 文件放置到 <code>chrome-bookmark-manager/icons/</code> 目录下
+  </div>
+
+  <script>
+    const sizes = [
+      { size: 16, label: 'icon16.png' },
+      { size: 48, label: 'icon48.png' },
+      { size: 128, label: 'icon128.png' }
+    ];
+
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      const s = size;
+      const padding = s * 0.12;
+      const w = s - padding * 2;
+      const h = s - padding * 2;
+      
+      // 背景：圆角矩形
+      const radius = s * 0.18;
+      ctx.beginPath();
+      ctx.moveTo(padding + radius, padding);
+      ctx.lineTo(padding + w - radius, padding);
+      ctx.arcTo(padding + w, padding, padding + w, padding + radius, radius);
+      ctx.lineTo(padding + w, padding + h - radius);
+      ctx.arcTo(padding + w, padding + h, padding + w - radius, padding + h, radius);
+      ctx.lineTo(padding + radius, padding + h);
+      ctx.arcTo(padding, padding + h, padding, padding + h - radius, radius);
+      ctx.lineTo(padding, padding + radius);
+      ctx.arcTo(padding, padding, padding + radius, padding, radius);
+      ctx.closePath();
+      
+      // 渐变背景
+      const grad = ctx.createLinearGradient(padding, padding, padding + w, padding + h);
+      grad.addColorStop(0, '#4285f4');
+      grad.addColorStop(1, '#1a73e8');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      
+      // 书签折角效果（右下角）
+      ctx.beginPath();
+      const foldSize = s * 0.35;
+      ctx.moveTo(padding + w - foldSize, padding + h);
+      ctx.lineTo(padding + w, padding + h - foldSize);
+      ctx.lineTo(padding + w, padding + h);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fill();
+      
+      // 白色条纹（模拟书签纸张）
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = s * 0.04;
+      const lineY1 = padding + h * 0.35;
+      const lineY2 = padding + h * 0.55;
+      
+      ctx.beginPath();
+      ctx.moveTo(padding + w * 0.2, lineY1);
+      ctx.lineTo(padding + w * 0.75, lineY1);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(padding + w * 0.2, lineY2);
+      ctx.lineTo(padding + w * 0.6, lineY2);
+      ctx.stroke();
+      
+      // 书签星标
+      if (s >= 48) {
+        ctx.fillStyle = '#fbbc04';
+        ctx.font = `bold ${s * 0.35}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', padding + w * 0.45, padding + h * 0.28);
+      }
+    }
+
+    const container = document.getElementById('iconsContainer');
+    sizes.forEach(({ size, label }) => {
+      const card = document.createElement('div');
+      card.className = 'icon-card';
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      drawIcon(canvas, size);
+      
+      const labelEl = document.createElement('div');
+      labelEl.className = 'label';
+      labelEl.textContent = `${size}×${size} - ${label}`;
+      
+      const btn = document.createElement('button');
+      btn.textContent = '下载';
+      btn.onclick = () => {
+        const link = document.createElement('a');
+        link.download = label;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
+      
+      card.appendChild(canvas);
+      card.appendChild(labelEl);
+      card.appendChild(btn);
+      container.appendChild(card);
+    });
+
+    function downloadAll() {
+      const canvases = document.querySelectorAll('canvas');
+      canvases.forEach((canvas, i) => {
+        setTimeout(() => {
+          const link = document.createElement('a');
+          link.download = sizes[i].label;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }, i * 300);
+      });
+    }
+  </script>
+</body>
+</html>

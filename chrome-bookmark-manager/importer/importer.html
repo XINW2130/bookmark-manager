@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>导入外部书签 - 全浏览器书签管理器</title>
+  <link rel="stylesheet" href="importer.css">
+</head>
+<body>
+  <div class="page-container">
+    <!-- 头部 -->
+    <header class="page-header">
+      <div class="header-left">
+        <h1>📥 导入外部书签</h1>
+        <p class="subtitle">支持从任意浏览器导出的书签文件进行导入</p>
+      </div>
+      <div class="header-right">
+        <button id="btnOpenPopup" class="outline-btn">← 返回书签管理</button>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <!-- 左侧：上传区域 -->
+      <div class="upload-section">
+        <div class="upload-card">
+          <!-- 拖拽上传区 -->
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-content">
+              <div class="drop-icon">📂</div>
+              <h3>拖拽书签文件到此处</h3>
+              <p>或</p>
+              <label class="file-select-btn" for="fileInput">选择文件</label>
+              <input type="file" id="fileInput" accept=".html,.htm,.json" multiple hidden>
+              <p class="format-hint">支持 HTML 书签文件（Netscape 格式）和 JSON 文件</p>
+            </div>
+          </div>
+
+          <!-- 快速导入按钮 -->
+          <div class="quick-actions">
+            <h3>📋 快速导入指南</h3>
+            <div class="guide-steps">
+              <div class="guide-step">
+                <span class="step-num">1</span>
+                <div>
+                  <strong>从其他浏览器导出书签</strong>
+                  <p>Chrome/Edge/Firefox 等浏览器均支持导出书签为 HTML 文件</p>
+                </div>
+              </div>
+              <div class="guide-step">
+                <span class="step-num">2</span>
+                <div>
+                  <strong>上传文件或拖拽到此页面</strong>
+                  <p>支持同时选择多个书签文件批量导入</p>
+                </div>
+              </div>
+              <div class="guide-step">
+                <span class="step-num">3</span>
+                <div>
+                  <strong>预览并确认导入</strong>
+                  <p>查看解析结果，可选择全部导入或筛选后导入</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="browser-export-tips">
+              <h4>各浏览器导出方法：</h4>
+              <ul>
+                <li><strong>Chrome:</strong> 书签管理器 → ⋮ 菜单 → 导出书签</li>
+                <li><strong>Edge:</strong> 收藏夹 → ⋯ 菜单 → 导出收藏夹</li>
+                <li><strong>Firefox:</strong> 书签 → 管理 → 导入和备份 → 导出书签到 HTML</li>
+                <li><strong>Safari:</strong> 文件 → 导出 → 书签</li>
+                <li><strong>360/QQ/搜狗:</strong> 收藏夹 → 导入/导出 → 导出书签</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：预览区域 -->
+      <div class="preview-section">
+        <div class="preview-header">
+          <h2>📋 解析预览</h2>
+          <div class="preview-stats" id="previewStats" style="display:none;">
+            <span class="preview-stat">
+              文件: <strong id="previewFileCount">0</strong>
+            </span>
+            <span class="preview-stat">
+              书签: <strong id="previewBookmarkCount">0</strong>
+            </span>
+            <span class="preview-stat">
+              文件夹: <strong id="previewFolderCount">0</strong>
+            </span>
+          </div>
+          <div class="preview-actions" id="previewActions" style="display:none;">
+            <button id="btnSelectAll" class="small-btn">全选</button>
+            <button id="btnDeselectAll" class="small-btn outline">取消全选</button>
+            <button id="btnImportSelected" class="primary-btn small">导入选中书签</button>
+          </div>
+        </div>
+
+        <!-- 解析结果列表 -->
+        <div class="preview-list" id="previewList">
+          <div class="preview-empty">
+            <div class="preview-empty-icon">📭</div>
+            <p>尚未解析任何书签文件</p>
+            <p class="sub">上传或拖拽书签文件到左侧区域开始解析</p>
+          </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="progress-bar" id="progressBar" style="display:none;">
+          <div class="progress-fill" id="progressFill"></div>
+          <span class="progress-text" id="progressText">导入中...</span>
+        </div>
+
+        <!-- 导入日志 -->
+        <div class="import-log" id="importLog" style="display:none;">
+          <h3>📝 导入日志</h3>
+          <div class="log-entries" id="logEntries"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="importer.js"></script>
+</body>
+</html>

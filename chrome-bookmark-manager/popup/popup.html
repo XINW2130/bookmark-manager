@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全浏览器书签管理器</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 头部 -->
+    <header class="header">
+      <div class="header-top">
+        <h1 class="logo">📑 书签管理器</h1>
+        <div class="header-actions">
+          <button id="btnRefresh" class="icon-btn" title="刷新书签">🔄</button>
+          <button id="btnExport" class="icon-btn" title="导出书签">📤</button>
+          <button id="btnSyncSettings" class="icon-btn" title="Git 同步设置">⚙</button>
+        </div>
+      </div>
+      <!-- 搜索栏 -->
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜索书签名称或网址..." autocomplete="off">
+        <button id="btnClearSearch" class="clear-btn" style="display:none;">✕</button>
+      </div>
+    </header>
+
+    <!-- Tab 切换 -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="all">全部书签</button>
+      <button class="tab-btn" data-tab="imported">外部导入</button>
+    </nav>
+
+    <!-- 统计栏 -->
+    <div class="stats-bar" id="statsBar">
+      <span class="stat-item">📊 总计: <strong id="statTotal">0</strong></span>
+      <span class="stat-item">📁 文件夹: <strong id="statFolders">0</strong></span>
+      <span class="stat-item">📥 导入: <strong id="statImported">0</strong></span>
+    </div>
+
+    <!-- 书签展示区 -->
+    <div class="bookmark-area" id="bookmarkArea">
+      <div class="loading">正在加载书签...</div>
+    </div>
+
+    <!-- 空状态 -->
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <div class="empty-icon">📭</div>
+      <p>暂无书签</p>
+      <p class="sub-text">尝试导入外部书签或添加新书签</p>
+    </div>
+
+    <!-- 底部操作 -->
+    <footer class="footer">
+      <button id="btnOpenImporter" class="primary-btn">📥 导入外部书签</button>
+      <button id="btnScanAll" class="secondary-btn">🔍 扫描 Chrome 书签</button>
+    </footer>
+  </div>
+
+  <!-- 书签详情弹窗 -->
+  <div class="modal" id="detailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>书签详情</h3>
+        <button class="close-btn" id="btnCloseModal">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

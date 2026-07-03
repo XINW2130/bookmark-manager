@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>书签查看器 - Bookmark Viewer</title>
+<style>
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ============================================================
+   Error / Loading / Empty States
+   ============================================================ */
+.state-container {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 2rem; text-align: center;
+}
+.state-icon { font-size: 4rem; margin-bottom: 1rem; }
+.state-title { font-size: 1.5rem; font-weight: 700; color: #333; margin-bottom: 0.5rem; }
+.state-desc { color: #666; max-width: 400px; line-height: 1.8; }
+.spinner {
+  width: 48px; height: 48px; border: 4px solid #e0e0e0;
+  border-top-color: #4f6ef7; border-radius: 50%; animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   Password Modal
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 1rem;
+  backdrop-filter: blur(4px);
+}
+.modal-box {
+  background: #fff; border-radius: 16px; width: 100%;
+  max-width: 420px; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: modalIn 0.3s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(-20px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.modal-icon { font-size: 3rem; text-align: center; margin-bottom: 0.75rem; }
+.modal-title { font-size: 1.3rem; font-weight: 700; text-align: center; margin-bottom: 0.25rem; color: #1a1a2e; }
+.modal-desc { text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 1.5rem; }
+.modal-input {
+  width: 100%; padding: 12px 16px; font-size: 1rem;
+  border: 2px solid #e0e0e0; border-radius: 10px;
+  outline: none; transition: border-color 0.2s;
+  background: #f9fafb;
+}
+.modal-input:focus { border-color: #4f6ef7; background: #fff; }
+.modal-error { color: #e74c3c; font-size: 0.85rem; margin-top: 0.5rem; text-align: center; min-height: 1.2em; }
+.modal-btn {
+  width: 100%; margin-top: 1rem; padding: 12px;
+  font-size: 1rem; font-weight: 600; border: none; border-radius: 10px;
+  background: linear-gradient(135deg, #4f6ef7, #6c8cff);
+  color: #fff; cursor: pointer; transition: opacity 0.2s, transform 0.1s;
+}
+.modal-btn:hover { opacity: 0.9; }
+.modal-btn:active { transform: scale(0.98); }
+.modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ============================================================
+   Header
+   ============================================================ */
+.app-header {
+  background: linear-gradient(135deg, #4f6ef7, #6c8cff);
+  color: #fff; padding: 1.5rem 2rem; box-shadow: 0 2px 12px rgba(79,110,247,0.2);
+}
+.header-inner { max-width: 1200px; margin: 0 auto; }
+.header-title { font-size: 1.6rem; font-weight: 800; }
+.header-meta { font-size: 0.85rem; opacity: 0.85; margin-top: 0.25rem; }
+
+/* ============================================================
+   Toolbar
+   ============================================================ */
+.toolbar {
+  background: #fff; border-bottom: 1px solid #e8eaed;
+  padding: 0.75rem 2rem; position: sticky; top: 0; z-index: 100;
+}
+.toolbar-inner {
+  max-width: 1200px; margin: 0 auto;
+  display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+}
+.search-box {
+  flex: 1; min-width: 200px; position: relative;
+}
+.search-box input {
+  width: 100%; padding: 10px 14px 10px 38px;
+  border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.95rem;
+  outline: none; transition: border-color 0.2s; background: #f9fafb;
+}
+.search-box input:focus { border-color: #4f6ef7; background: #fff; }
+.search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 1rem; color: #999; pointer-events: none;
+}
+.btn-filter {
+  padding: 10px 18px; border: 2px solid #e0e0e0; border-radius: 10px;
+  font-size: 0.9rem; cursor: pointer; background: #fff; color: #555;
+  transition: all 0.2s; white-space: nowrap;
+}
+.btn-filter:hover { border-color: #4f6ef7; color: #4f6ef7; }
+.btn-filter.active { background: #4f6ef7; color: #fff; border-color: #4f6ef7; }
+.btn-lock {
+  padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px;
+  font-size: 0.9rem; cursor: pointer; background: #fff; color: #555;
+  transition: all 0.2s; white-space: nowrap; margin-left: auto;
+}
+.btn-lock:hover { border-color: #e74c3c; color: #e74c3c; }
+.count-badge {
+  font-size: 0.85rem; color: #999; padding: 4px 12px;
+  background: #f0f2f5; border-radius: 20px; white-space: nowrap;
+}
+
+/* ============================================================
+   Content Area
+   ============================================================ */
+.content { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+.no-results {
+  text-align: center; padding: 4rem 1rem; color: #999;
+}
+.no-results .icon { font-size: 3rem; margin-bottom: 0.75rem; }
+
+/* ============================================================
+   Bookmark Card Grid
+   ============================================================ */
+.section-title {
+  font-size: 1.15rem; font-weight: 700; color: #333;
+  margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.section-title .count {
+  font-size: 0.8rem; font-weight: 500; color: #999;
+  background: #f0f2f5; padding: 2px 10px; border-radius: 12px;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem; margin-bottom: 2rem;
+}
+
+/* ============================================================
+   Single Card
+   ============================================================ */
+.card {
+  background: #fff; border-radius: 12px; padding: 1.25rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  transition: box-shadow 0.2s, transform 0.15s;
+  border: 1px solid #eef0f4;
+  display: flex; align-items: flex-start; gap: 0.85rem;
+  cursor: pointer; text-decoration: none; color: inherit;
+}
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1); transform: translateY(-1px);
+  border-color: #d0d7f5;
+}
+.card-favicon {
+  width: 32px; height: 32px; border-radius: 6px;
+  flex-shrink: 0; background: #f0f2f5;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; color: #999; overflow: hidden;
+}
+.card-favicon img { width: 100%; height: 100%; object-fit: contain; }
+.card-body { min-width: 0; flex: 1; }
+.card-title {
+  font-weight: 600; font-size: 0.95rem; line-height: 1.4;
+  color: #1a1a2e; overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.card-url {
+  font-size: 0.78rem; color: #999; margin-top: 0.3rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card-time {
+  font-size: 0.72rem; color: #bbb; margin-top: 0.2rem;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 768px) {
+  .app-header { padding: 1rem 1rem; }
+  .header-title { font-size: 1.3rem; }
+  .toolbar { padding: 0.6rem 1rem; }
+  .toolbar-inner { flex-direction: column; align-items: stretch; }
+  .btn-lock { margin-left: 0; }
+  .content { padding: 1rem; }
+  .card-grid { grid-template-columns: 1fr; }
+  .modal-box { padding: 1.5rem; }
+}
+
+@media (max-width: 480px) {
+  .card { padding: 1rem; }
+  .card-title { font-size: 0.9rem; }
+  .section-title { font-size: 1rem; }
+}
+
+/* ============================================================
+   Toast
+   ============================================================ */
+.toast {
+  position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%);
+  background: #333; color: #fff; padding: 10px 24px;
+  border-radius: 10px; font-size: 0.9rem; z-index: 2000;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  animation: toastIn 0.3s ease;
+}
+.toast.error { background: #e74c3c; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     Loading State
+     ============================================================ -->
+<div id="loadingState" class="state-container">
+  <div class="spinner"></div>
+  <div class="state-desc">正在加载加密书签文件...</div>
+</div>
+
+<!-- ============================================================
+     Error State
+     ============================================================ -->
+<div id="errorState" class="state-container" style="display:none;">
+  <div class="state-icon">📁</div>
+  <div class="state-title" id="errorTitle">加载失败</div>
+  <div class="state-desc" id="errorDesc">无法从仓库加载加密书签文件，请确认文件路径正确。</div>
+</div>
+
+<!-- ============================================================
+     Password Modal
+     ============================================================ -->
+<div id="passwordModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-icon">🔐</div>
+    <div class="modal-title">请输入解密密码</div>
+    <div class="modal-desc">书签文件已加密，输入密码后解密查看</div>
+    <input type="password" id="passwordInput" class="modal-input"
+           placeholder="输入加密密码" autocomplete="off" autofocus>
+    <div class="modal-error" id="passwordError"></div>
+    <button class="modal-btn" id="btnDecrypt">🔓 解密查看书签</button>
+    <button style="width:100%;margin-top:0.5rem;padding:8px;font-size:0.85rem;border:none;background:none;color:#999;cursor:pointer;"
+            id="btnCloseModal">取消</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     Main App (hidden until decrypted)
+     ============================================================ -->
+<div id="appContainer" style="display:none;">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-title">🔖 加密书签查看器</div>
+      <div class="header-meta">
+        <span id="exportTime">-</span>
+        &nbsp;·&nbsp;
+        <span id="totalCount">0</span> 条书签
+      </div>
+    </div>
+  </header>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-inner">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜索书签标题或网址...">
+      </div>
+      <button class="btn-filter active" data-filter="all">全部</button>
+      <button class="btn-filter" data-filter="chrome">Chrome 书签</button>
+      <button class="btn-filter" data-filter="imported">外部导入</button>
+      <span class="count-badge" id="filteredCount">0 条</span>
+      <button class="btn-lock" id="btnReLock" title="锁定并重新输入密码">🔒 锁定</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="bookmarkContent"></div>
+</div>
+
+<script>
+/* ============================================================
+   Config
+   ============================================================ */
+const ENCRYPTED_FILE = '__ENCRYPTED_FILE__'; // 由插件推送时自动替换为实际路径
+
+/* ============================================================
+   State
+   ============================================================ */
+let decryptedData = null;   // { chrome: [...], imported: [...], exportedAt, pluginVersion }
+let encryptedRaw = null;    // raw encrypted string from file
+let currentFilter = 'all';
+let searchQuery = '';
+
+/* ============================================================
+   DOM refs
+   ============================================================ */
+const $ = s => document.querySelector(s);
+
+/* ============================================================
+   Web Crypto helpers
+   ============================================================ */
+function hexToBytes(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return bytes;
+}
+
+function base64ToArrayBuffer(b64) {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function deriveKey(password, saltHex) {
+  const encoder = new TextEncoder();
+  const salt = encoder.encode(saltHex || 'chrome-bookmark-sync-default-salt');
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+  );
+}
+
+async function decrypt(packedStr, password) {
+  const packed = JSON.parse(packedStr);
+  const key = await deriveKey(password, packed.salt);
+  const iv = new Uint8Array(base64ToArrayBuffer(packed.iv));
+  const ciphertext = base64ToArrayBuffer(packed.data);
+
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv }, key, ciphertext
+  );
+  return new TextDecoder().decode(plaintext);
+}
+
+/* ============================================================
+   Load encrypted file
+   ============================================================ */
+async function loadEncryptedFile() {
+  $('#loadingState').style.display = '';
+  $('#errorState').style.display = 'none';
+
+  try {
+    const resp = await fetch(ENCRYPTED_FILE);
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+    encryptedRaw = await resp.text();
+
+    if (!encryptedRaw || encryptedRaw.trim().length === 0) {
+      throw new Error('文件为空');
+    }
+
+    // File loaded, show password modal
+    $('#loadingState').style.display = 'none';
+    showPasswordModal();
+  } catch (err) {
+    console.error('加载加密文件失败:', err);
+    $('#loadingState').style.display = 'none';
+    $('#errorState').style.display = '';
+    $('#errorTitle').textContent = '加载失败';
+    $('#errorDesc').textContent =
+      `无法加载加密书签文件 "${ENCRYPTED_FILE}"。请确保文件已推送到仓库，且与当前页面在同一目录下。\n(${err.message})`;
+  }
+}
+
+/* ============================================================
+   Password Modal
+   ============================================================ */
+function showPasswordModal() {
+  $('#passwordModal').style.display = '';
+  $('#passwordInput').value = '';
+  $('#passwordError').textContent = '';
+  setTimeout(() => $('#passwordInput').focus(), 100);
+}
+
+function hidePasswordModal() {
+  $('#passwordModal').style.display = 'none';
+}
+
+async function handleDecrypt() {
+  const password = $('#passwordInput').value;
+  const errorEl = $('#passwordError');
+  const btnEl = $('#btnDecrypt');
+
+  if (!password || password.trim().length === 0) {
+    errorEl.textContent = '请输入密码';
+    $('#passwordInput').focus();
+    return;
+  }
+
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ 解密中...';
+  errorEl.textContent = '';
+
+  try {
+    // Delay slightly to let UI update
+    await new Promise(r => setTimeout(r, 100));
+
+    const decrypted = await decrypt(encryptedRaw.trim(), password);
+    decryptedData = JSON.parse(decrypted);
+
+    hidePasswordModal();
+    $('#appContainer').style.display = '';
+
+    // Update header
+    const total = (decryptedData.chrome || []).length + (decryptedData.imported || []).length;
+    $('#totalCount').textContent = total;
+    if (decryptedData.exportedAt) {
+      $('#exportTime').textContent = '🕐 ' + new Date(decryptedData.exportedAt).toLocaleString('zh-CN');
+    }
+
+    renderBookmarks();
+  } catch (err) {
+    console.error('解密失败:', err);
+    errorEl.textContent = '🔴 解密失败，密码不正确或文件已损坏';
+    btnEl.disabled = false;
+    btnEl.textContent = '🔓 解密查看书签';
+    $('#passwordInput').value = '';
+    $('#passwordInput').focus();
+  }
+}
+
+/* ============================================================
+   Render
+   ============================================================ */
+function renderBookmarks() {
+  if (!decryptedData) return;
+
+  const query = searchQuery.toLowerCase().trim();
+  let chromeBookmarks = decryptedData.chrome || [];
+  let importedBookmarks = decryptedData.imported || [];
+
+  // Apply search filter
+  if (query) {
+    chromeBookmarks = chromeBookmarks.filter(b =>
+      (b.title && b.title.toLowerCase().includes(query)) ||
+      (b.url && b.url.toLowerCase().includes(query))
+    );
+    importedBookmarks = importedBookmarks.filter(b =>
+      (b.title && b.title.toLowerCase().includes(query)) ||
+      (b.url && b.url.toLowerCase().includes(query))
+    );
+  }
+
+  let html = '';
+
+  if (currentFilter === 'all' || currentFilter === 'chrome') {
+    html += buildSection('🌐 Chrome 书签', chromeBookmarks);
+  }
+  if (currentFilter === 'all' || currentFilter === 'imported') {
+    html += buildSection('📥 外部导入书签', importedBookmarks);
+  }
+
+  // Empty state
+  if (!html.trim()) {
+    html = '<div class="no-results"><div class="icon">🔍</div><p>没有找到匹配的书签</p></div>';
+  }
+
+  $('#bookmarkContent').innerHTML = html;
+  $('#filteredCount').textContent =
+    (currentFilter === 'all' ? (chromeBookmarks.length + importedBookmarks.length) :
+     currentFilter === 'chrome' ? chromeBookmarks.length : importedBookmarks.length) + ' 条';
+}
+
+function buildSection(title, bookmarks) {
+  if (!bookmarks || bookmarks.length === 0) {
+    return `<div class="section-title">${title} <span class="count">0 条</span></div>
+            <div class="no-results" style="padding:2rem 0;"><p>暂无书签</p></div>`;
+  }
+
+  let html = `<div class="section-title">${title} <span class="count">${bookmarks.length} 条</span></div>`;
+  html += '<div class="card-grid">';
+
+  for (const bm of bookmarks) {
+    const favicon = getFaviconUrl(bm.url);
+    const title = escHtml(bm.title || '未命名书签');
+    const url = escHtml(bm.url || '');
+    const time = bm.dateAdded
+      ? new Date(bm.dateAdded).toLocaleDateString('zh-CN')
+      : '';
+
+    html += `
+      <a class="card" href="${escAttr(bm.url)}" target="_blank" rel="noopener" title="${title}\n${url}">
+        <div class="card-favicon">
+          <img src="${favicon}" alt="" onerror="this.parentElement.textContent='📌'">
+        </div>
+        <div class="card-body">
+          <div class="card-title">${title}</div>
+          <div class="card-url">${url}</div>
+          ${time ? `<div class="card-time">📅 ${time}</div>` : ''}
+        </div>
+      </a>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function getFaviconUrl(url) {
+  try {
+    const u = new URL(url);
+    return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=32`;
+  } catch {
+    return '';
+  }
+}
+
+function escHtml(str) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return str.replace(/[&<>"']/g, c => map[c]);
+}
+
+function escAttr(str) {
+  return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* ============================================================
+   Event Binding
+   ============================================================ */
+$('#btnDecrypt').addEventListener('click', handleDecrypt);
+$('#passwordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleDecrypt();
+});
+$('#btnCloseModal').addEventListener('click', hidePasswordModal);
+
+// Re-lock
+$('#btnReLock').addEventListener('click', () => {
+  $('#appContainer').style.display = 'none';
+  decryptedData = null;
+  showPasswordModal();
+});
+
+// Search
+$('#searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value;
+  renderBookmarks();
+});
+
+// Filter buttons
+document.querySelectorAll('.btn-filter').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderBookmarks();
+  });
+});
+
+/* ============================================================
+   Boot
+   ============================================================ */
+loadEncryptedFile();
+</script>
+
+</body>
+</html>
