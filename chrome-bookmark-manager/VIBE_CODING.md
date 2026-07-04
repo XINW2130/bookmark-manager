@@ -1,4 +1,4 @@
-# chrome-bookmark-manager · 全浏览器书签管理器
+# chrome-bookmark-manager · 浏览器书签管理器
 
 > Chrome 浏览器扩展 — 加密同步书签到 GitHub，支持多设备安全查看
 

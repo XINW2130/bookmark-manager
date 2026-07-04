@@ -287,6 +287,8 @@ body {
 
 .folder-children {
   overflow: hidden;
+  border-left: 1px solid var(--border-color);
+  margin-left: 25px;
 }
 
 /* ========== 书签项 ========== */
